@@ -1,4 +1,4 @@
-FALLBACK_IMAGE_BASE64
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { CEFRLevel, EvaluationResult } from "../types";
 
@@ -94,6 +94,9 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T
   throw new Error(`Lỗi: ${actualMessage}`);
 }
 
+// Pre-encoded static fallback SVG (pure ASCII, no btoa needed)
+const FALLBACK_IMAGE_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNDUwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2NjdlZWEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM3NjRiYTIiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjQwMCIgeT0iMjAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNTAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MZXQncyBMZWFybiE8L3RleHQ+PHRleHQgeD0iNDAwIiB5PSIyNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdpbmUgYSBiZWF1dGlmdWwgcGljdHVyZSBoZXJlPC90ZXh0Pjwvc3ZnPg==';
+
 export const generateIllustration = async (theme: string): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
@@ -125,36 +128,29 @@ export const generateIllustration = async (theme: string): Promise<string> => {
     }
   }
 
-  // Fallback: Use a placeholder image from a reliable source
-  console.warn('[Image Gen] All models failed, using placeholder image');
-  const placeholderUrl = `https://source.unsplash.com/800x450/?${encodeURIComponent(theme)},children,colorful`;
-
-  // Fetch and convert to base64
+  // Fallback: Try to fetch from Unsplash (with safe ASCII-only query)
+  console.warn('[Image Gen] All AI models failed, trying Unsplash fallback');
   try {
+    // Use only safe ASCII characters for the query
+    const safeQuery = theme.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'learning children';
+    const placeholderUrl = `https://source.unsplash.com/800x450/?${encodeURIComponent(safeQuery)},colorful`;
     const response = await fetch(placeholderUrl);
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    // Ultimate fallback: solid color gradient placeholder with safe ASCII text
-    const safeSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#667eea"/>
-            <stop offset="100%" style="stop-color:#764ba2"/>
-          </linearGradient>
-        </defs>
-        <rect width="800" height="450" fill="url(#grad)"/>
-        <text x="400" y="200" font-family="Arial" font-size="50" fill="white" text-anchor="middle">Let's Learn!</text>
-        <text x="400" y="260" font-family="Arial" font-size="24" fill="white" text-anchor="middle">Imagine a beautiful picture here</text>
-      </svg>
-    `;
-    return 'data:image/svg+xml;base64,' + btoa(safeSvg);
+    if (response.ok) {
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(FALLBACK_IMAGE_BASE64);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (err) {
+    console.warn('[Image Gen] Unsplash fetch failed:', err);
   }
+
+  // Ultimate fallback: Return pre-encoded static SVG
+  console.warn('[Image Gen] Using static fallback image');
+  return FALLBACK_IMAGE_BASE64;
 };
 
 export const generatePresentationScript = async (imageUri: string, theme: string, level: CEFRLevel): Promise<any> => {
@@ -163,7 +159,6 @@ export const generatePresentationScript = async (imageUri: string, theme: string
     if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
 
     const ai = new GoogleGenAI({ apiKey });
-    const base64Data = imageUri.split(',')[1];
 
     const levelInstructions = {
       'Starters': 'Create 5-6 very simple sentences. Focus on identifying objects and colors.',
@@ -177,20 +172,48 @@ export const generatePresentationScript = async (imageUri: string, theme: string
       'C2': 'Mastery level detail.'
     }[level] || '8-10 sentences.';
 
+    // Check if image is valid (not SVG fallback)
+    const isSvgFallback = imageUri.includes('image/svg+xml') || !imageUri.includes('base64,');
+    const isPng = imageUri.includes('image/png');
+    const isJpeg = imageUri.includes('image/jpeg') || imageUri.includes('image/jpg');
+    const isValidImage = (isPng || isJpeg) && !isSvgFallback;
+
+    let contentParts: any[];
+
+    if (isValidImage) {
+      // Use image + text prompt
+      const base64Data = imageUri.split(',')[1];
+      const mimeType = isPng ? 'image/png' : 'image/jpeg';
+      contentParts = [
+        { inlineData: { mimeType, data: base64Data } },
+        {
+          text: `Based on this picture for the topic "${theme}", write a pedagogical English presentation script for a student at ${level} level.
+                 
+                 STRICT RULES:
+                 1. ${levelInstructions}
+                 2. DO NOT use double periods.
+                 3. Return JSON with: intro, points (array), conclusion.`
+        }
+      ];
+    } else {
+      // Use text-only prompt (fallback when image generation failed)
+      console.warn('[Script Gen] Using text-only prompt (no valid image)');
+      contentParts = [
+        {
+          text: `Create a pedagogical English presentation script about "${theme}" for a student at ${level} level.
+                 
+                 STRICT RULES:
+                 1. ${levelInstructions}
+                 2. DO NOT use double periods.
+                 3. Return JSON with: intro, points (array), conclusion.
+                 4. Make it engaging and educational for children.`
+        }
+      ];
+    }
+
     const response = await ai.models.generateContent({
       model: TEXT_MODEL_PRIMARY,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: base64Data } },
-          {
-            text: `Based on this picture for the topic "${theme}", write a pedagogical English presentation script for a student at ${level} level.
-                   
-                   STRICT RULES:
-                   1. ${levelInstructions}
-                   2. DO NOT use double periods.
-                   3. Return JSON with: intro, points (array), conclusion.` }
-        ]
-      },
+      contents: { parts: contentParts },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -448,7 +471,6 @@ export const generateComprehensionQuestions = async (
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
 
-    const base64Data = imageUri.split(',')[1];
     const ai = new GoogleGenAI({ apiKey });
 
     const levelInstructions = {
@@ -463,13 +485,22 @@ export const generateComprehensionQuestions = async (
       'C2': 'Mastery level, 4 options. Nuanced understanding and analysis.'
     }[level] || '4 options, moderate difficulty.';
 
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL_PRIMARY,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: base64Data } },
-          {
-            text: `Based on this image and the presentation script below, create exactly 10 reading comprehension questions for a student at ${level} level.
+    // Check if image is valid (not SVG fallback)
+    const isSvgFallback = imageUri.includes('image/svg+xml') || !imageUri.includes('base64,');
+    const isPng = imageUri.includes('image/png');
+    const isJpeg = imageUri.includes('image/jpeg') || imageUri.includes('image/jpg');
+    const isValidImage = (isPng || isJpeg) && !isSvgFallback;
+
+    let contentParts: any[];
+
+    if (isValidImage) {
+      // Use image + text prompt
+      const base64Data = imageUri.split(',')[1];
+      const mimeType = isPng ? 'image/png' : 'image/jpeg';
+      contentParts = [
+        { inlineData: { mimeType, data: base64Data } },
+        {
+          text: `Based on this image and the presentation script below, create exactly 10 reading comprehension questions for a student at ${level} level.
 
 Presentation Script:
 "${script}"
@@ -486,9 +517,37 @@ Return JSON array with 10 objects, each having:
 - options: string[] (3-4 answer options in English)
 - correctIndex: number (0-based index of correct answer)
 - explanation: string (brief explanation in Vietnamese why this is correct)`
-          }
-        ]
-      },
+        }
+      ];
+    } else {
+      // Use text-only prompt (fallback when image generation failed)
+      console.warn('[Quiz Gen] Using text-only prompt (no valid image)');
+      contentParts = [
+        {
+          text: `Based on the presentation script below, create exactly 10 reading comprehension questions for a student at ${level} level.
+
+Presentation Script:
+"${script}"
+
+RULES:
+1. ${levelInstructions}
+2. Questions should be about the script content.
+3. Mix question types: factual recall (5), inference (3), vocabulary meaning (2).
+4. Each question must have exactly one correct answer.
+5. Explanations should be brief and educational (in Vietnamese for young learners).
+
+Return JSON array with 10 objects, each having:
+- question: string (the question in English)
+- options: string[] (3-4 answer options in English)
+- correctIndex: number (0-based index of correct answer)
+- explanation: string (brief explanation in Vietnamese why this is correct)`
+        }
+      ];
+    }
+
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL_PRIMARY,
+      contents: { parts: contentParts },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
