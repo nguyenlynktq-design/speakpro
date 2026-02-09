@@ -1,4 +1,4 @@
-
+FALLBACK_IMAGE_BASE64
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { CEFRLevel, EvaluationResult } from "../types";
 
