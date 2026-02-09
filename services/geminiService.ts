@@ -50,14 +50,24 @@ export function initializeGeminiChat(apiKey?: string, model?: string): void {
  */
 async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
   let delay = 1500; // Start with 1.5s
+  let lastError: any = null;
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (err: any) {
+      lastError = err;
       const errorStr = JSON.stringify(err).toLowerCase();
+      const errorMessage = err?.message?.toLowerCase() || '';
+
+      // Log full error for debugging
+      console.error(`[Gemini API] Error attempt ${i + 1}/${maxRetries}:`, err);
+      console.error(`[Gemini API] Error message:`, err?.message);
+      console.error(`[Gemini API] Error status:`, err?.status);
+
       const isQuotaError =
         err?.status === 429 ||
-        err?.message?.includes('429') ||
+        errorMessage.includes('429') ||
         errorStr.includes('quota') ||
         errorStr.includes('resource_exhausted') ||
         errorStr.includes('rate_limit');
@@ -69,33 +79,81 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T
         continue;
       }
 
-      // If it's not a quota error or we're out of retries, throw the last error
-      console.error("[Gemini API] Permanent Error:", err);
-      throw err;
+      // If it's not a quota error, throw immediately with actual message
+      if (!isQuotaError) {
+        throw new Error(err?.message || `Lỗi API: ${JSON.stringify(err)}`);
+      }
     }
   }
-  throw new Error("MÁY CHỦ BẬN: Bé vui lòng chờ 30 giây rồi nhấn 'Thử lại' nhé!");
+
+  // If we exhausted retries, throw with the actual error message
+  const actualMessage = lastError?.message || 'Unknown error';
+  if (actualMessage.includes('quota') || actualMessage.includes('429')) {
+    throw new Error("MÁY CHỦ BẬN: Ms Ly AI đang phục vụ quá nhiều bạn nhỏ. Bé chờ 30 giây rồi nhấn 'Thử lại' nhé!");
+  }
+  throw new Error(`Lỗi: ${actualMessage}`);
 }
 
 export const generateIllustration = async (theme: string): Promise<string> => {
-  return callWithRetry(async () => {
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
 
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `A highly vibrant, artistic, and detailed 3D Disney/Pixar style illustration for children showing: ${theme}. Soft lighting, friendly faces, bright colors. High quality.`;
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `A highly vibrant, artistic, and detailed 3D Disney/Pixar style illustration for children showing: ${theme}. Soft lighting, friendly faces, bright colors. High quality.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: { parts: [{ text: prompt }] },
-      config: { imageConfig: { aspectRatio: "16:9" } }
-    });
+  // Try multiple image models in order
+  const imageModels = ['gemini-2.5-flash-image', 'imagen-3.0-generate-002', 'gemini-2.0-flash-image-generation'];
 
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+  for (const model of imageModels) {
+    try {
+      console.log(`[Image Gen] Trying model: ${model}`);
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: { parts: [{ text: prompt }] },
+        config: { imageConfig: { aspectRatio: "16:9" } }
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          console.log(`[Image Gen] Success with model: ${model}`);
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Image Gen] Model ${model} failed:`, err?.message);
+      continue; // Try next model
     }
-    throw new Error("Không tạo được ảnh minh họa.");
-  });
+  }
+
+  // Fallback: Use a placeholder image from a reliable source
+  console.warn('[Image Gen] All models failed, using placeholder image');
+  const placeholderUrl = `https://source.unsplash.com/800x450/?${encodeURIComponent(theme)},children,colorful`;
+
+  // Fetch and convert to base64
+  try {
+    const response = await fetch(placeholderUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    // Ultimate fallback: solid color gradient placeholder
+    return 'data:image/svg+xml;base64,' + btoa(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#667eea"/>
+            <stop offset="100%" style="stop-color:#764ba2"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="450" fill="url(#grad)"/>
+        <text x="400" y="200" font-family="Arial" font-size="40" fill="white" text-anchor="middle">🎨 ${theme}</text>
+        <text x="400" y="260" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Hãy tưởng tượng bức tranh tuyệt đẹp!</text>
+      </svg>
+    `);
+  }
 };
 
 export const generatePresentationScript = async (imageUri: string, theme: string, level: CEFRLevel): Promise<any> => {
