@@ -139,8 +139,8 @@ export const generateIllustration = async (theme: string): Promise<string> => {
       reader.readAsDataURL(blob);
     });
   } catch {
-    // Ultimate fallback: solid color gradient placeholder
-    return 'data:image/svg+xml;base64,' + btoa(`
+    // Ultimate fallback: solid color gradient placeholder with safe ASCII text
+    const safeSvg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">
         <defs>
           <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -149,10 +149,11 @@ export const generateIllustration = async (theme: string): Promise<string> => {
           </linearGradient>
         </defs>
         <rect width="800" height="450" fill="url(#grad)"/>
-        <text x="400" y="200" font-family="Arial" font-size="40" fill="white" text-anchor="middle">🎨 ${theme}</text>
-        <text x="400" y="260" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Hãy tưởng tượng bức tranh tuyệt đẹp!</text>
+        <text x="400" y="200" font-family="Arial" font-size="50" fill="white" text-anchor="middle">Let's Learn!</text>
+        <text x="400" y="260" font-family="Arial" font-size="24" fill="white" text-anchor="middle">Imagine a beautiful picture here</text>
       </svg>
-    `);
+    `;
+    return 'data:image/svg+xml;base64,' + btoa(safeSvg);
   }
 };
 
