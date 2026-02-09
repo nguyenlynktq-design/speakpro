@@ -2,11 +2,11 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { CEFRLevel, EvaluationResult } from "../types";
 
-// Model fallback order per AI_INSTRUCTIONS.md
-const MODEL_FALLBACK_ORDER = [
-  'gemini-3-flash-preview',
-  'gemini-3-pro-preview',
-  'gemini-2.5-flash'
+// Model fallback order - prioritize stable models with higher rate limits
+const TEXT_MODEL_PRIMARY = 'gemini-2.5-flash';  // Stable, higher quota
+const TEXT_MODEL_FALLBACKS = [
+  'gemini-2.0-flash',       // Fallback 1: Also stable
+  'gemini-2.5-flash-lite',  // Fallback 2: Lightweight
 ];
 
 /**
@@ -20,7 +20,7 @@ export function getApiKey(): string {
  * Get selected model from localStorage  
  */
 export function getSelectedModel(): string {
-  return localStorage.getItem('gemini_selected_model') || 'gemini-3-flash-preview';
+  return localStorage.getItem('gemini_selected_model') || TEXT_MODEL_PRIMARY;
 }
 
 /**
@@ -119,7 +119,7 @@ export const generatePresentationScript = async (imageUri: string, theme: string
     }[level] || '8-10 sentences.';
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: TEXT_MODEL_PRIMARY,
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/png', data: base64Data } },
@@ -181,7 +181,7 @@ export const evaluatePresentation = async (originalScript: string, transcript: s
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: TEXT_MODEL_PRIMARY,
       contents: `Evaluate this child's English presentation.
                  Target Script: "${originalScript}"
                  Student Spoken Content: "${transcript}"
@@ -302,7 +302,7 @@ export const getWordMeaning = async (word: string): Promise<{ meaning: string; p
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: TEXT_MODEL_PRIMARY,
       contents: `Provide the Vietnamese translation for the English word "${cleanWord}".
                  Return JSON with:
                  - meaning: Vietnamese meaning (concise, 1-3 words)
@@ -405,7 +405,7 @@ export const generateComprehensionQuestions = async (
     }[level] || '4 options, moderate difficulty.';
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: TEXT_MODEL_PRIMARY,
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/png', data: base64Data } },

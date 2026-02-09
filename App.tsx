@@ -45,12 +45,12 @@ const App: React.FC = () => {
   // API Key states
   const [showApiModal, setShowApiModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
 
   // Check for API key on mount
   useEffect(() => {
     const storedKey = getApiKey();
-    const storedModel = localStorage.getItem('gemini_selected_model') || 'gemini-3-flash-preview';
+    const storedModel = localStorage.getItem('gemini_selected_model') || 'gemini-2.5-flash';
     if (storedKey) {
       setApiKey(storedKey);
       setSelectedModel(storedModel);

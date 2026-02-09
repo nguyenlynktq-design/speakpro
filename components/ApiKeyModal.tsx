@@ -2,26 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Key, ExternalLink, Check, X, Zap, Star, Sparkles } from 'lucide-react';
 
 const AVAILABLE_MODELS = [
-  { 
-    id: 'gemini-3-flash-preview', 
-    name: 'Gemini 3 Flash', 
-    description: 'Nhanh nhất, phù hợp mọi tác vụ',
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Ổn định, quota cao, khuyên dùng',
     badge: 'Mặc định',
     color: 'blue'
   },
-  { 
-    id: 'gemini-3-pro-preview', 
-    name: 'Gemini 3 Pro', 
-    description: 'Mạnh mẽ hơn, chất lượng cao',
-    badge: 'Pro',
-    color: 'purple'
-  },
-  { 
-    id: 'gemini-2.5-flash', 
-    name: 'Gemini 2.5 Flash', 
-    description: 'Ổn định, tiết kiệm quota',
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    description: 'Ổn định, dự phòng',
     badge: 'Dự phòng',
     color: 'green'
+  },
+  {
+    id: 'gemini-2.5-flash-lite',
+    name: 'Gemini 2.5 Flash Lite',
+    description: 'Nhẹ, tiết kiệm quota',
+    badge: 'Tiết kiệm',
+    color: 'purple'
   }
 ];
 
@@ -33,12 +33,12 @@ interface ApiKeyModalProps {
   initialModel?: string;
 }
 
-const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  initialApiKey = '', 
-  initialModel = 'gemini-3-flash-preview' 
+const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialApiKey = '',
+  initialModel = 'gemini-2.5-flash'
 }) => {
   const [apiKey, setApiKey] = useState(initialApiKey);
   const [selectedModel, setSelectedModel] = useState(initialModel);
@@ -68,11 +68,11 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Header */}
@@ -86,7 +86,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
               <p className="text-sm text-slate-400 font-medium">Cấu hình để sử dụng SpeakPro</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-slate-300 hover:text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
           >
@@ -119,9 +119,9 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 {showKey ? 'Ẩn' : 'Hiện'}
               </button>
             </div>
-            <a 
-              href="https://aistudio.google.com/api-keys" 
-              target="_blank" 
+            <a
+              href="https://aistudio.google.com/api-keys"
+              target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
             >
@@ -140,27 +140,24 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 <button
                   key={model.id}
                   onClick={() => setSelectedModel(model.id)}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
-                    selectedModel === model.id
-                      ? 'border-blue-400 bg-blue-50'
-                      : 'border-slate-100 hover:border-slate-200 bg-white'
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${selectedModel === model.id
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                    }`}
                 >
-                  <div className={`p-2 rounded-xl ${
-                    model.color === 'blue' ? 'bg-blue-100' :
+                  <div className={`p-2 rounded-xl ${model.color === 'blue' ? 'bg-blue-100' :
                     model.color === 'purple' ? 'bg-purple-100' : 'bg-green-100'
-                  }`}>
+                    }`}>
                     {model.color === 'blue' ? <Zap className="text-blue-600" size={20} /> :
-                     model.color === 'purple' ? <Star className="text-purple-600" size={20} /> :
-                     <Sparkles className="text-green-600" size={20} />}
+                      model.color === 'purple' ? <Star className="text-purple-600" size={20} /> :
+                        <Sparkles className="text-green-600" size={20} />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-800">{model.name}</span>
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        model.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${model.color === 'blue' ? 'bg-blue-100 text-blue-600' :
                         model.color === 'purple' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'
-                      }`}>
+                        }`}>
                         {model.badge}
                       </span>
                     </div>
