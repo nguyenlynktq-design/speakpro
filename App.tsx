@@ -78,6 +78,9 @@ const App: React.FC = () => {
   // Certificate state
   const [showCertificate, setShowCertificate] = useState(false);
 
+  // Reading speed control (0.5 = slow, 1.0 = normal, 1.5 = fast)
+  const [speechRate, setSpeechRate] = useState(0.8);
+
   // Recording states
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isReplayingRecorded, setIsReplayingRecorded] = useState(false);
@@ -154,8 +157,18 @@ const App: React.FC = () => {
       audioBufferRef.current = buffer;
       startAudioAt(0);
       setAudioState('playing');
-    } catch (err) {
-      handleError(err, playTeacherVoice);
+    } catch (err: any) {
+      // If TTS fails, use Web Speech API fallback
+      if (err?.message === 'TTS_FALLBACK_TO_WEB_SPEECH') {
+        const utterance = new SpeechSynthesisUtterance(presentation.script);
+        utterance.lang = 'en-US';
+        utterance.rate = speechRate;
+        utterance.onend = () => setAudioState('idle');
+        window.speechSynthesis.speak(utterance);
+        setAudioState('playing');
+      } else {
+        handleError(err, playTeacherVoice);
+      }
     } finally {
       setIsAudioLoading(false);
     }
@@ -337,16 +350,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-12 font-['Quicksand']">
-      <header className="bg-white border-b-2 border-slate-100 sticky top-0 z-50 px-6 py-4 shadow-sm">
+    <div className="min-h-screen pb-12 font-['Quicksand']" style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #fce7f3 50%, #fef3c7 100%)' }}>
+      <header className="bg-white/90 backdrop-blur-sm border-b-2 border-pink-100 sticky top-0 z-50 px-6 py-4 shadow-lg">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer group" onClick={reset}>
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-100 transform group-hover:rotate-6 transition-transform">
-              <Sparkles className="text-white" size={24} />
+            <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 p-3 rounded-2xl shadow-lg transform group-hover:rotate-6 transition-transform">
+              <Sparkles className="text-white" size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">Speakpro</h1>
-              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1">Designed by Ms Ly AI</p>
+              <h1 className="text-2xl lg:text-3xl font-black bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 bg-clip-text text-transparent tracking-tight leading-none">Speakpro ✨</h1>
+              <p className="text-[10px] lg:text-xs font-bold text-purple-500 uppercase tracking-widest mt-1">Designed by Ms Ly AI</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -461,6 +474,47 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   {audioState !== 'idle' && <button onClick={stopAudio} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><StopCircle size={24} /></button>}
+                </div>
+
+                {/* Speed Control and Download */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Speed Slider */}
+                  <div className="flex-1 bg-purple-50/50 border-2 border-purple-100 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-purple-600 uppercase">Tốc độ đọc</span>
+                      <span className="text-sm font-black text-purple-700">{speechRate.toFixed(1)}x</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-purple-400">🐢 Chậm</span>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="1.5"
+                        step="0.1"
+                        value={speechRate}
+                        onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                        className="speed-slider flex-1"
+                      />
+                      <span className="text-xs text-purple-400">Nhanh 🐇</span>
+                    </div>
+                  </div>
+
+                  {/* Download Button */}
+                  <button
+                    onClick={() => {
+                      const content = `📖 ${customTheme || selectedTheme?.label || 'Presentation'}\n\n🎯 Level: ${level}\n\n📝 Script:\n${presentation?.script || ''}\n\n👶 Student: ${childName}`;
+                      const blob = new Blob([content], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `speakpro_${Date.now()}.txt`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all"
+                  >
+                    <Download size={18} /> Tải bài
+                  </button>
                 </div>
               </div>
 

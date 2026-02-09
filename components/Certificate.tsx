@@ -13,12 +13,12 @@ interface CertificateProps {
     centerName?: string;
 }
 
-// Get grade classification based on score
+// Get grade classification based on score (scale 0-10)
 const getGradeInfo = (score: number): { grade: string; color: string; stars: number } => {
-    if (score >= 4.5) return { grade: 'Xuất sắc', color: 'text-amber-500', stars: 5 };
-    if (score >= 4.0) return { grade: 'Giỏi', color: 'text-emerald-500', stars: 4 };
-    if (score >= 3.5) return { grade: 'Khá', color: 'text-blue-500', stars: 3 };
-    if (score >= 3.0) return { grade: 'Trung bình', color: 'text-orange-500', stars: 2 };
+    if (score >= 9) return { grade: 'Xuất sắc', color: 'text-amber-500', stars: 5 };
+    if (score >= 8) return { grade: 'Giỏi', color: 'text-emerald-500', stars: 4 };
+    if (score >= 7) return { grade: 'Khá', color: 'text-blue-500', stars: 3 };
+    if (score >= 5) return { grade: 'Trung bình', color: 'text-orange-500', stars: 2 };
     return { grade: 'Cần cố gắng', color: 'text-slate-500', stars: 1 };
 };
 
@@ -131,14 +131,24 @@ const Certificate: React.FC<CertificateProps> = ({
                 <div className="p-6 overflow-y-auto max-h-[calc(95vh-80px)]">
                     <div
                         ref={certificateRef}
-                        className="relative bg-gradient-to-br from-amber-50 via-white to-orange-50 border-8 border-double border-amber-400 rounded-2xl p-8 shadow-inner"
-                        style={{ minHeight: '500px' }}
+                        className="relative bg-gradient-to-br from-pink-50 via-yellow-50 to-cyan-50 rounded-3xl p-8 shadow-2xl"
+                        style={{
+                            minHeight: '500px',
+                            border: '10px solid transparent',
+                            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #f472b6, #fb923c, #facc15, #4ade80, #60a5fa, #a78bfa)',
+                            backgroundOrigin: 'padding-box, border-box',
+                            backgroundClip: 'padding-box, border-box'
+                        }}
                     >
-                        {/* Corner decorations */}
-                        <div className="absolute top-4 left-4 w-16 h-16 border-l-4 border-t-4 border-amber-300 rounded-tl-xl"></div>
-                        <div className="absolute top-4 right-4 w-16 h-16 border-r-4 border-t-4 border-amber-300 rounded-tr-xl"></div>
-                        <div className="absolute bottom-4 left-4 w-16 h-16 border-l-4 border-b-4 border-amber-300 rounded-bl-xl"></div>
-                        <div className="absolute bottom-4 right-4 w-16 h-16 border-r-4 border-b-4 border-amber-300 rounded-br-xl"></div>
+                        {/* Corner star decorations */}
+                        <div className="absolute top-6 left-6 text-3xl animate-pulse">⭐</div>
+                        <div className="absolute top-6 right-6 text-3xl animate-pulse" style={{ animationDelay: '0.3s' }}>🌟</div>
+                        <div className="absolute bottom-6 left-6 text-3xl animate-pulse" style={{ animationDelay: '0.6s' }}>✨</div>
+                        <div className="absolute bottom-6 right-6 text-3xl animate-pulse" style={{ animationDelay: '0.9s' }}>🎉</div>
+
+                        {/* Confetti decorations */}
+                        <div className="absolute top-12 left-1/4 text-2xl opacity-60">🎊</div>
+                        <div className="absolute top-12 right-1/4 text-2xl opacity-60">🎊</div>
 
                         {/* Content */}
                         <div className="text-center space-y-6 relative z-10">
@@ -218,7 +228,7 @@ const Certificate: React.FC<CertificateProps> = ({
                                 ].map(skill => (
                                     <div key={skill.label} className="bg-white/80 rounded-lg px-3 py-2 border border-amber-100">
                                         <span className="text-slate-500 font-medium">{skill.label}: </span>
-                                        <span className="font-black text-slate-700">{skill.value}/5</span>
+                                        <span className="font-black text-slate-700">{skill.value}/10</span>
                                     </div>
                                 ))}
                             </div>

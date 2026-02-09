@@ -88,8 +88,8 @@ const VocabularyWord: React.FC<VocabularyWordProps> = ({ word, onGetMeaning, onS
                 ref={wordRef}
                 onClick={handleClick}
                 className={`cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5 ${isOpen
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'hover:bg-yellow-100 hover:text-yellow-700 active:bg-yellow-200'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'hover:bg-yellow-100 hover:text-yellow-700 active:bg-yellow-200'
                     }`}
             >
                 {word}
@@ -100,15 +100,15 @@ const VocabularyWord: React.FC<VocabularyWordProps> = ({ word, onGetMeaning, onS
                 <div
                     ref={tooltipRef}
                     className={`absolute z-[100] w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${position === 'above'
-                            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
-                            : 'top-full mt-2 left-1/2 -translate-x-1/2'
+                        ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
+                        : 'top-full mt-2 left-1/2 -translate-x-1/2'
                         }`}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-3 flex items-center justify-between">
+                    {/* Header with colorful gradient */}
+                    <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <BookOpen className="text-white/80" size={16} />
+                            <span className="text-xl">📖</span>
                             <span className="text-white font-black text-lg">{cleanWord}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -157,8 +157,8 @@ const VocabularyWord: React.FC<VocabularyWordProps> = ({ word, onGetMeaning, onS
                     {/* Arrow */}
                     <div
                         className={`absolute w-3 h-3 bg-white border-slate-100 rotate-45 left-1/2 -translate-x-1/2 ${position === 'above'
-                                ? '-bottom-1.5 border-r border-b'
-                                : '-top-1.5 border-l border-t'
+                            ? '-bottom-1.5 border-r border-b'
+                            : '-top-1.5 border-l border-t'
                             }`}
                     />
                 </div>

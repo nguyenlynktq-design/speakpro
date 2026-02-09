@@ -104,8 +104,13 @@ export const generateIllustration = async (theme: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `A highly vibrant, artistic, and detailed 3D Disney/Pixar style illustration for children showing: ${theme}. Soft lighting, friendly faces, bright colors. High quality.`;
 
-  // Try multiple image models in order
-  const imageModels = ['gemini-2.5-flash-image', 'imagen-3.0-generate-002', 'gemini-2.0-flash-image-generation'];
+  // Try multiple image models in order (updated list for 2026)
+  const imageModels = [
+    'gemini-2.0-flash-exp-image-generation',  // Latest exp model
+    'imagen-3.0-generate-001',                 // Stable Imagen
+    'gemini-2.5-flash-preview-image',          // Preview
+    'gemini-2.0-flash-image-generation'        // Fallback
+  ];
 
   for (const model of imageModels) {
     try {
@@ -113,7 +118,10 @@ export const generateIllustration = async (theme: string): Promise<string> => {
       const response = await ai.models.generateContent({
         model: model,
         contents: { parts: [{ text: prompt }] },
-        config: { imageConfig: { aspectRatio: "16:9" } }
+        config: {
+          responseModalities: ['IMAGE', 'TEXT'],
+          imageConfig: { aspectRatio: "16:9" }
+        }
       });
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -128,12 +136,12 @@ export const generateIllustration = async (theme: string): Promise<string> => {
     }
   }
 
-  // Fallback: Try to fetch from Unsplash (with safe ASCII-only query)
+  // Fallback: Try to fetch from Unsplash
   console.warn('[Image Gen] All AI models failed, trying Unsplash fallback');
   try {
-    // Use only safe ASCII characters for the query
     const safeQuery = theme.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'learning children';
-    const placeholderUrl = `https://source.unsplash.com/800x450/?${encodeURIComponent(safeQuery)},colorful`;
+    // Use picsum.photos as it's more reliable
+    const placeholderUrl = `https://picsum.photos/800/450`;
     const response = await fetch(placeholderUrl);
     if (response.ok) {
       const blob = await response.blob();
@@ -145,7 +153,7 @@ export const generateIllustration = async (theme: string): Promise<string> => {
       });
     }
   } catch (err) {
-    console.warn('[Image Gen] Unsplash fetch failed:', err);
+    console.warn('[Image Gen] Image fetch failed:', err);
   }
 
   // Ultimate fallback: Return pre-encoded static SVG
@@ -161,16 +169,16 @@ export const generatePresentationScript = async (imageUri: string, theme: string
     const ai = new GoogleGenAI({ apiKey });
 
     const levelInstructions = {
-      'Starters': 'Create 5-6 very simple sentences. Focus on identifying objects and colors.',
-      'Movers': 'Create 6-7 simple sentences. Use present continuous.',
-      'Flyers': 'Create 7-8 sentences. Include feelings.',
-      'A1': '8-10 sentences.',
-      'A2': '10-12 sentences.',
-      'B1': '12-15 sentences.',
-      'B2': 'Sophisticated analysis.',
-      'C1': 'Academic level detail.',
-      'C2': 'Mastery level detail.'
-    }[level] || '8-10 sentences.';
+      'Starters': 'Write exactly 20 words total using 4-5 extremely simple sentences. Use only basic vocabulary (colors, numbers, animals, family). Example structure: "This is a cat. The cat is orange. I like cats."',
+      'Movers': 'Write exactly 50 words total using 6-7 simple sentences. Use present tense and common words. Include basic adjectives.',
+      'Flyers': 'Write exactly 80 words total using 8-9 sentences. Include feelings and simple descriptions. Use present and past tense.',
+      'A1': 'Write 100-120 words total using 10-12 sentences. Focus on clear, simple structures. Use basic vocabulary and simple grammar.',
+      'A2': 'Write 150-180 words total using 12-15 sentences. Include some complex sentences. Use varied vocabulary.',
+      'B1': 'Write 200-250 words total using 15-18 sentences. Include opinions and reasons. Use connectors and transitions.',
+      'B2': 'Write 250-300 words total using 18-22 sentences. Sophisticated analysis with advanced vocabulary and complex structures.',
+      'C1': 'Write 300-350 words with academic detail and nuanced expression.',
+      'C2': 'Write 350-400 words with mastery-level complexity and eloquence.'
+    }[level] || '100-120 words in 10-12 sentences.';
 
     // Check if image is valid (not SVG fallback)
     const isSvgFallback = imageUri.includes('image/svg+xml') || !imageUri.includes('base64,');
@@ -191,8 +199,11 @@ export const generatePresentationScript = async (imageUri: string, theme: string
                  
                  STRICT RULES:
                  1. ${levelInstructions}
-                 2. DO NOT use double periods.
-                 3. Return JSON with: intro, points (array), conclusion.`
+                 2. CRITICAL: Use proper spacing between ALL words. Never combine words together.
+                 3. Each sentence must be complete with proper punctuation and spaces.
+                 4. Use normal English text with spaces like: "Hello everyone! Today I want to tell you..."
+                 5. DO NOT use double periods.
+                 6. Return JSON with: intro, points (array), conclusion.`
         }
       ];
     } else {
@@ -204,9 +215,12 @@ export const generatePresentationScript = async (imageUri: string, theme: string
                  
                  STRICT RULES:
                  1. ${levelInstructions}
-                 2. DO NOT use double periods.
-                 3. Return JSON with: intro, points (array), conclusion.
-                 4. Make it engaging and educational for children.`
+                 2. CRITICAL: Use proper spacing between ALL words. Never combine words together.
+                 3. Each sentence must be complete with proper punctuation and spaces.
+                 4. Use normal English text with spaces like: "Hello everyone! Today I want to tell you..."
+                 5. DO NOT use double periods.
+                 6. Return JSON with: intro, points (array), conclusion.
+                 7. Make it engaging and educational for children.`
         }
       ];
     }
@@ -233,27 +247,42 @@ export const generatePresentationScript = async (imageUri: string, theme: string
 };
 
 export const generateTeacherVoice = async (text: string): Promise<AudioBuffer> => {
-  return callWithRetry(async () => {
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Vui lòng nhập API Key để sử dụng app.");
 
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Read slowly and clearly: ${text}` }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
-      },
-    });
+  const ai = new GoogleGenAI({ apiKey });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) throw new Error("Audio error");
+  // Try multiple TTS models in order
+  const ttsModels = ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts', 'gemini-2.0-flash-live'];
 
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    const decodedData = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
-    return decodedData;
-  });
+  for (const model of ttsModels) {
+    try {
+      console.log(`[TTS] Trying model: ${model}`);
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: [{ parts: [{ text: `Read slowly and clearly: ${text}` }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
+        },
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (base64Audio) {
+        console.log(`[TTS] Success with model: ${model}`);
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        const decodedData = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
+        return decodedData;
+      }
+    } catch (err: any) {
+      console.warn(`[TTS] Model ${model} failed:`, err?.message);
+      continue;
+    }
+  }
+
+  // Fallback: Use Web Speech API
+  console.warn('[TTS] All Gemini TTS models failed, using Web Speech API fallback');
+  throw new Error('TTS_FALLBACK_TO_WEB_SPEECH');
 };
 
 export const evaluatePresentation = async (originalScript: string, transcript: string, level: CEFRLevel): Promise<EvaluationResult> => {
@@ -264,25 +293,42 @@ export const evaluatePresentation = async (originalScript: string, transcript: s
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: TEXT_MODEL_PRIMARY,
-      contents: `Evaluate this child's English presentation.
-                 Target Script: "${originalScript}"
-                 Student Spoken Content: "${transcript}"
-                 Expected Level: ${level}
-                 
-                 Evaluate based on these 6 criteria (Scale 0-10):
-                 1. Pronunciation (Phát âm)
-                 2. Fluency (Độ trôi chảy)
-                 3. Intonation & Stress (Ngữ điệu & Trọng âm)
-                 4. Vocabulary (Từ vựng)
-                 5. Grammar (Ngữ pháp)
-                 6. Task Fulfillment (Nói đúng nội dung & đủ yêu cầu)
+      contents: `You are a CEFR Speaking Examiner. Evaluate this English presentation reading practice.
 
-                 Return JSON with:
-                 - pronunciation, fluency, intonation, vocabulary, grammar, taskFulfillment (numbers 0-10)
-                 - mistakes (array of {word, tip})
-                 - feedback (in Vietnamese, friendly, child-focused, maximum 2 sentences)
-                 - teacherPraise (in English, encouraging, short)
-                 - suggestions (array of 2 specific English learning tips in Vietnamese)`,
+TARGET SCRIPT (what student should read):
+"${originalScript}"
+
+STUDENT'S SPOKEN CONTENT:
+"${transcript}"
+
+EXPECTED LEVEL: ${level}
+
+CRITICAL RULES:
+1. This is a READING practice - student must read the TARGET SCRIPT
+2. If student speaks OFF-TOPIC (not reading the script), ALL scores = 0
+3. Compare student's speech with the target script carefully
+4. Use scale 0-10:
+   - 9-10: Excellent - Native-like
+   - 7-8: Good - Minor errors only  
+   - 5-6: Satisfactory - Some errors but understandable
+   - 3-4: Developing - Many errors, limited communication
+   - 1-2: Limited - Significant difficulty
+   - 0: Off-topic or no attempt
+
+EVALUATE ON 6 CEFR SPEAKING CRITERIA:
+1. Pronunciation (Phát âm) - Individual sounds, word stress
+2. Fluency (Độ trôi chảy) - Smooth delivery, natural pauses
+3. Intonation & Stress (Ngữ điệu) - Sentence melody, emphasis
+4. Vocabulary (Từ vựng) - Correct word usage from script
+5. Grammar (Ngữ pháp) - Accurate sentence structures
+6. Task Fulfillment (Hoàn thành bài) - Read correct content, complete the script
+
+Return JSON with:
+- pronunciation, fluency, intonation, vocabulary, grammar, taskFulfillment (0-10 each)
+- mistakes (array of {word, tip} for pronunciation/grammar errors)
+- feedback (Vietnamese, friendly, max 2 sentences)
+- teacherPraise (English, encouraging)
+- suggestions (2 specific tips in Vietnamese)`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
